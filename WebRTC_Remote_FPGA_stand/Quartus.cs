@@ -7,16 +7,17 @@ using System.Threading.Tasks;
 
 namespace WebRTC_Remote_FPGA_stand
 {
-    public class Quartus_console
+    public class Quartus
     {
         private const string environment_variable = "QUARTUS_ROOTDIR";
         public string path_to_quartus { get; }
 
         private static Process cmd;
 
-        private static Quartus_console _instance;
+        private static Quartus _instance;
 
-        private Quartus_console() {
+        private Quartus()
+        {
             cmd = new Process();
             cmd.StartInfo.FileName = "cmd.exe";
             cmd.StartInfo.RedirectStandardInput = true;
@@ -42,15 +43,17 @@ namespace WebRTC_Remote_FPGA_stand
 
         }
 
-        static public Quartus_console GetInstance() {
-            if(_instance == null)
+        static public Quartus GetInstance()
+        {
+            if (_instance == null)
             {
-                _instance = new Quartus_console();
+                _instance = new Quartus();
             }
             return _instance;
         }
 
-        public Task<string> RunQuartusCommandAsync(string command) {
+        public Task<string> RunQuartusCommandAsync(string command)
+        {
             // Restart StandardInput
             cmd.Start();
 

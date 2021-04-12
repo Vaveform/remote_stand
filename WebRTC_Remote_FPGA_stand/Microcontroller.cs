@@ -8,18 +8,21 @@ using System.Threading.Tasks;
 
 namespace MicrocontrollerAPI
 {
-    public class Pin_Setting {
-        public Pin_Setting() {
+    public class Pin_Setting
+    {
+        public Pin_Setting()
+        {
             button_number = signal_level = duty = frequency = -1;
             PWM_signal_status = false;
         }
         public int button_number { get; set; }
         public bool PWM_signal_status { get; set; }
         public int signal_level { get; set; }
-        public int duty {get; set;}
+        public int duty { get; set; }
         public int frequency { get; set; }
     }
-    public class Ids_Usings_Pins {
+    public class Ids_Usings_Pins
+    {
         // input GPIO_0[0] on FPGA = LEDDR[0] - output pin number Arduino 11 - PWM
         // input GPIO_0[2] on FPGA = LEDDR[1] - output pin number Arduino 10 - PWM
         // input GPIO_0[4] on FPGA = LEDDR[2] - output pin number Arduino 9 - PWM
@@ -28,38 +31,44 @@ namespace MicrocontrollerAPI
         // input GPIO_0[12] on FPGA = LEDDR[5] - output pin number Arduino 4
         // input GPIO_0[14] on FPGA = LEDDR[6] - output pin number Arduino 3 - PWM
         // input GPIO_0[16] on FPGA = LEDDR[7] - output pin number Arduino 2
-        static public readonly Dictionary<int, int> Using_Digital_GPIO_Arduino_Outputs = new Dictionary<int, int>{ 
-            {0, 11}, 
-            {1, 10}, 
-            {2, 9}, 
-            {3, 8}, 
-            {4, 5}, 
-            {5, 4}, 
-            {6, 3}, 
-            {7, 2} 
+        static public readonly Dictionary<int, int> Using_Digital_GPIO_Arduino_Outputs = new Dictionary<int, int>{
+            {0, 11},
+            {1, 10},
+            {2, 9},
+            {3, 8},
+            {4, 5},
+            {5, 4},
+            {6, 3},
+            {7, 2}
         };
     }
-    public enum Digital_Signal_Levels {
+    public enum Digital_Signal_Levels
+    {
         LOW,
         HIGH
     }
-    public class Digital_GPIO_Output {
+    public class Digital_GPIO_Output
+    {
         public Digital_GPIO_Output() { }
-        public Digital_GPIO_Output(int _pin_number, Digital_Signal_Levels _signal_level) {
+        public Digital_GPIO_Output(int _pin_number, Digital_Signal_Levels _signal_level)
+        {
             pin_number = _pin_number;
             signal_level = _signal_level;
         }
         public int pin_number { get; set; }
         public Digital_Signal_Levels signal_level { get; set; }
     }
-    public class Pins_Status {
-        public Pins_Status() {
+    public class Pins_Status
+    {
+        public Pins_Status()
+        {
             pins = new List<Digital_GPIO_Output>();
             type_of_pins = typeof(Digital_GPIO_Output).ToString();
         }
         public string type_of_pins { get; private set; }
         public List<Digital_GPIO_Output> pins { get; private set; }
-        public void AddPinLevel(int FPGA_input_number, Digital_Signal_Levels signal_level) {
+        public void AddPinLevel(int FPGA_input_number, Digital_Signal_Levels signal_level)
+        {
             pins.Add(new Digital_GPIO_Output(FPGA_input_number, signal_level));
         }
     }
@@ -76,7 +85,8 @@ namespace MicrocontrollerAPI
         private static CTP_packet command;
         private static Microcontroller instance;
 
-        static public byte[] CommandStruct_to_Bytes(CTP_packet command) {
+        static public byte[] CommandStruct_to_Bytes(CTP_packet command)
+        {
             byte[] arr = new byte[Marshal.SizeOf(command)];
             IntPtr ptr = Marshal.AllocHGlobal(Marshal.SizeOf(command));
             Marshal.StructureToPtr(command, ptr, true);
@@ -95,7 +105,8 @@ namespace MicrocontrollerAPI
             command.pin_number = 255;
             command.duty = 0;
             command.frequency = 0;
-            for (int port_number = number_of_ports_to_check; port_number > 0; port_number--) {
+            for (int port_number = number_of_ports_to_check; port_number > 0; port_number--)
+            {
                 connection.PortName = "COM" + port_number.ToString();
                 try
                 {
@@ -103,7 +114,8 @@ namespace MicrocontrollerAPI
                     connection.Write(CommandStruct_to_Bytes(command), 0, Marshal.SizeOf(command) - 1);
                     connection.Read(buffer, 0, 1);
                 }
-                catch (Exception) {
+                catch (Exception)
+                {
                     connection.Close();
                     continue;
                 }
@@ -117,9 +129,10 @@ namespace MicrocontrollerAPI
                 connection.Close();
             }
             return is_connected;
-                
+
         }
-        private Microcontroller() {
+        private Microcontroller()
+        {
             connection = new System.IO.Ports.SerialPort();
             connection.BaudRate = 9600;
             connection.Parity = System.IO.Ports.Parity.None;
@@ -140,15 +153,18 @@ namespace MicrocontrollerAPI
             }
         }
 
-        static public Microcontroller Create() {
-            if (instance == null) {
+        static public Microcontroller Create()
+        {
+            if (instance == null)
+            {
                 instance = new Microcontroller();
             }
 
             return instance;
         }
 
-        public byte SendCTP_Command(CTP_packet _command) {
+        public byte SendCTP_Command(CTP_packet _command)
+        {
             if (connection.IsOpen == false)
             {
                 return Convert.ToByte(0);
@@ -160,7 +176,8 @@ namespace MicrocontrollerAPI
             Console.WriteLine($"Recieved after command: {Convert.ToInt32(buffer[0])}");
             return buffer[0];
         }
-        public Task<byte> SendCTP_CommandAsync(CTP_packet _command) {
+        public Task<byte> SendCTP_CommandAsync(CTP_packet _command)
+        {
             return Task.Factory.StartNew((command) => {
                 if (connection.IsOpen == false)
                 {
@@ -184,6 +201,7 @@ namespace MicrocontrollerAPI
         public void Dispose()
         {
             Console.WriteLine("Close Serial Port Connection by Disposable");
+            instance = null;
             connection?.Close();
         }
     }
