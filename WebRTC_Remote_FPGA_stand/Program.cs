@@ -14,6 +14,8 @@ using System.Runtime.InteropServices;
 using MicrocontrollerAPI;
 using System.Net;
 using System.Net.Http;
+using System.Configuration;
+using System.Text.RegularExpressions;
 
 namespace WebRTC_Remote_FPGA_stand
 {
@@ -101,6 +103,8 @@ namespace WebRTC_Remote_FPGA_stand
 
                 }
             };
+            config.IceServers.Add(new IceServer { Urls = { ConfigurationManager.AppSettings.Get("Stun1") } });
+
 
             await pc.InitializeAsync(config);
             Console.WriteLine("Peer connection initialized.");
@@ -306,10 +310,13 @@ namespace WebRTC_Remote_FPGA_stand
             }
         }
 
+        
+
+
         static async Task Main(string[] args)
         {
-            await StartStend();
-
+            //var t = SystemConfiguration.SignalingURL;
+            Console.WriteLine("dsfsdf");
         }
     }
 }
