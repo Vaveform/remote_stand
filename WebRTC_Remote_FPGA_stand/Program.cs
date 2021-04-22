@@ -19,38 +19,45 @@ using System.Text.RegularExpressions;
 
 namespace WebRTC_Remote_FPGA_stand
 {
-    public interface ISystemController
-    {
-        void Notify(object sender, string message);
-    }
-
-    public class SystemController : ISystemController
-    {
-        public void Notify(object sender, string message)
-        {
-            // Main logic method.
-        }
-    }
-
-    public class HardwareCell
-    {
-        // Quartus Prime Command Line Interface Instance
-        // Using USB Jtag Programmer connected field programmable gates array (FPGA)
-        public Quartus QuartusSource { get; set; }
-
-        // Arduino Nano/Uno using to control the FPGA
-        // via GPIO interface
-        public Microcontroller ControlSource { get; set; }
-    }
-    public class UserCell
-    {
-
-        public PeerConnection WebRTCConnection { get; set; }
-        public FileStream AssignedUserFile { get; set; }
-    }
+   
 
     class Program
     {
+        private static async Task VideoDeviceSelection()
+        {
+            Console.WriteLine("Select availiable video device:");
+            SystemConfiguration.VideoDeviceSettings = new LocalVideoDeviceInitConfig();
+            int i = 0;
+            var device_list = (await DeviceVideoTrackSource.GetCaptureDevicesAsync()).ToList();
+            foreach (var device in device_list)
+            {
+                Console.WriteLine("{0}: Name: {1} ID: ", i, device.name, device.id);
+                i++;
+            }
+            int Selected = 0;
+            while ((Selected = Convert.ToInt32(Console.ReadLine())) >= device_list.Count() && Selected < 0)
+            {
+                Console.WriteLine("Unknown device, try again.");
+            }
+            Console.WriteLine("Select video format");
+            var formats_list = (await DeviceVideoTrackSource.GetCaptureFormatsAsync(device_list[0].id)).ToList();
+            SystemConfiguration.VideoDeviceSettings.videoDevice = device_list[Selected];
+            i = 0;
+            Selected = 0;
+            foreach (var format in await DeviceVideoTrackSource.GetCaptureFormatsAsync(device_list[0].id))
+            {
+                Console.WriteLine("{0}: Framerate: {1} Width: {2}, Height: {3}", i, format.framerate, format.width, format.height);
+                i++;
+            }
+            while ((Selected = Convert.ToInt32(Console.ReadLine())) >= formats_list.Count() && Selected < 0)
+            {
+                Console.WriteLine("Unknown format, try again.");
+            }
+            var SelectedFormat = formats_list[Selected];
+            SystemConfiguration.VideoDeviceSettings.framerate = SelectedFormat.framerate;
+            SystemConfiguration.VideoDeviceSettings.height = SelectedFormat.height;
+            SystemConfiguration.VideoDeviceSettings.width = SelectedFormat.width;
+        }
         // Working with sdp and ice candidate messages
 
         private static string CreateSignalingServerUrl()
@@ -69,8 +76,7 @@ namespace WebRTC_Remote_FPGA_stand
             bool file_created = false;
             FileStream file = null;
             Quartus quartus = Quartus.GetInstance();
-            //Microcontroller arduino = Microcontroller.Create(); 
-
+            Microcontroller arduino = Microcontroller.Create(); 
             if (video_translator)
             {
                 // Asynchronously retrieve a list of available video capture devices (webcams).
@@ -87,23 +93,7 @@ namespace WebRTC_Remote_FPGA_stand
             // Create a new peer connection automatically disposed at the end of the program
             var pc = new PeerConnection();
             // Initialize the connection with a STUN server to allow remote access
-            var config = new PeerConnectionConfiguration
-            {
-                IceServers = new List<IceServer> {
-                            new IceServer{ Urls = { "stun:stun.l.google.com:19302" } },
-                            new IceServer{ Urls = { "stun:stun1.l.google.com:19302" } },
-                            new IceServer{ Urls = { "stun:stun2.l.google.com:19302" } },
-                            new IceServer{ Urls = { "stun:stun3.l.google.com:19302" } },
-                            new IceServer
-                            {
-                                Urls = {"turn:numb.viagenie.ca" },
-                                TurnPassword = "9u7prU:2}R{Sut~.)d[bP7,;Pgc\'Pa",
-                                TurnUserName = "fkrveacbukypqsqyaq@miucce.com"
-                            }
-
-                }
-            };
-            config.IceServers.Add(new IceServer { Urls = { ConfigurationManager.AppSettings.Get("Stun1") } });
+            var config = SystemConfiguration.PeerConnectionSettings;
 
 
             await pc.InitializeAsync(config);
@@ -116,21 +106,12 @@ namespace WebRTC_Remote_FPGA_stand
             Transceiver videoTransceiver = null;
             VideoTrackSource videoTrackSource = null;
             LocalVideoTrack localVideoTrack = null;
+            LocalVideoDeviceInitConfig c = new LocalVideoDeviceInitConfig();
+            await VideoDeviceSelection();
+            videoTrackSource = await Camera.CreateAsync(SystemConfiguration.VideoDeviceSettings);
 
-            videoTrackSource = (await Camera.CreateAsync()).source;
-            Console.WriteLine("Create local video track...");
-            var trackSettings = new LocalVideoTrackInitConfig { trackName = "webcam_track" };
-            localVideoTrack = LocalVideoTrack.CreateFromSource(videoTrackSource, trackSettings);
-            Console.WriteLine("Create video transceiver and add webcam track...");
-            TransceiverInitSettings option = new TransceiverInitSettings();
-            option.Name = "webcam_track";
-            option.StreamIDs = new List<string> { "webcam_name" };
-            videoTransceiver = pc.AddTransceiver(MediaKind.Video, option);
-            videoTransceiver.DesiredDirection = Transceiver.Direction.SendOnly;
-            videoTransceiver.LocalVideoTrack = localVideoTrack;
 
             WebSocketSharp.WebSocket signaling = new WebSocketSharp.WebSocket(CreateSignalingServerUrl(), "id_token", "alpine");
-
             pc.LocalSdpReadytoSend += (SdpMessage message) =>
             {
                 //Console.WriteLine(SdpMessage.TypeToString(message.Type));
@@ -157,7 +138,7 @@ namespace WebRTC_Remote_FPGA_stand
                         try
                         {
                             CTP_packet command = JsonSerializer.Deserialize<CTP_packet>(mess);
-                            //arduino.SendCTP_Command(command);
+                            Console.WriteLine(arduino.SendCTP_Command(command));
                         }
                         catch (Exception e)
                         {
@@ -229,6 +210,16 @@ namespace WebRTC_Remote_FPGA_stand
                 Console.WriteLine("Header: {0}", header);
                 if (header == "{\"data\":{\"getRemoteMedia\":" && correct_message == "true")
                 {
+                    Console.WriteLine("Create local video track...");
+                    var trackSettings = new LocalVideoTrackInitConfig { trackName = "webcam_track" };
+                    localVideoTrack = LocalVideoTrack.CreateFromSource(videoTrackSource, new LocalVideoTrackInitConfig { trackName = "webcam_track" });
+                    Console.WriteLine("Create video transceiver and add webcam track...");
+                    TransceiverInitSettings option = new TransceiverInitSettings();
+                    option.Name = "webcam_track";
+                    option.StreamIDs = new List<string> { "webcam_name" };
+                    videoTransceiver = pc.AddTransceiver(MediaKind.Video, option);
+                    videoTransceiver.DesiredDirection = Transceiver.Direction.SendOnly;
+                    videoTransceiver.LocalVideoTrack = localVideoTrack;
 
                     bool OfferCreated = pc.CreateOffer();
                     Console.WriteLine("OfferCreated? {0}", OfferCreated);
@@ -255,7 +246,7 @@ namespace WebRTC_Remote_FPGA_stand
                     try
                     {
                         SdpMessage received_description = JsonSerializer.Deserialize<SDPJavaScriptNotation>(correct_message).ToMRNetCoreNotation();
-                        await pc.SetRemoteDescriptionAsync(received_description).ConfigureAwait(true);
+                        await pc.SetRemoteDescriptionAsync(received_description);
                         if (received_description.Type == SdpMessageType.Offer)
                         {
                             bool res = pc.CreateAnswer();
@@ -310,13 +301,73 @@ namespace WebRTC_Remote_FPGA_stand
             }
         }
 
-        
 
+        public class FinalizerTest : IDisposable {
+            private string Name { get; set; }
+            public FinalizerTest(string name) {
+                Console.WriteLine("Creating Finalizer Test with name {0}", name);
+                Name = name;
+            }
+            ~FinalizerTest() {
+                Console.WriteLine("Destroying Finalizer Test with name {0}", Name);
+            }
+
+            public void Dispose()
+            {
+                Console.WriteLine("Destroying Finalizer Test with name {0}", Name);
+            }
+        }
+
+        static Task Callback1() {
+            return Task.Run(() =>
+            {
+                for (int i = 0; i < 100000; i++) {
+                    Console.WriteLine("aboba in thread {0}", Thread.CurrentThread.ManagedThreadId);
+                }
+            });
+        }
+
+        static Task Callback2()
+        {
+            return Task.Run(() =>
+            {
+                for (int i = 0; i < 100000; i++)
+                {
+                    Console.WriteLine("Zhma in thread {0}", Thread.CurrentThread.ManagedThreadId);
+                }
+            });
+        }
+
+        //static Task CalculateCallbacks() {
+        //    Callback1();
+        //    Callback2();
+        //}
 
         static async Task Main(string[] args)
         {
-            //var t = SystemConfiguration.SignalingURL;
-            Console.WriteLine("dsfsdf");
+            //Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+            //var list = await DeviceVideoTrackSource.GetCaptureDevicesAsync();
+            //Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
+            //foreach (var format in await DeviceVideoTrackSource.GetCaptureFormatsAsync(list[0].id))
+            //{
+            //    Console.WriteLine("Width: {0}, Height: {1}, Framerate {2}",format.width, format.height, format.framerate);
+            //}
+            //LocalVideoDeviceInitConfig t = new LocalVideoDeviceInitConfig();
+            //t.videoDevice = SystemConfiguration.SelectedVideoCaptureDevice;
+            //var l = await DeviceVideoTrackSource.CreateAsync();
+            //Console.WriteLine(typeof(IceCandidate));
+            //if (typeof(IceCandidate).Name == "IceCandidate") {
+            //    Console.WriteLine("Hello world");
+            //}
+            SystemController controller = new SystemController();
+            await controller.RunSystem();
+            //Task<DeviceVideoTrackSource> t = DeviceVideoTrackSource.CreateAsync();
+            //DeviceVideoTrackSource lk = await t;
+            //lk.Dispose();
+            //if(lk.Enabled == false) {
+            //    Console.WriteLine("lk null");
+            //}
+            //await StartStend();
         }
     }
 }

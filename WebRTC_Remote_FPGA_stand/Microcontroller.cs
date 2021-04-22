@@ -169,6 +169,7 @@ namespace MicrocontrollerAPI
             {
                 return Convert.ToByte(0);
             }
+            Console.WriteLine("Sending");
             connection.Write(CommandStruct_to_Bytes(_command), 0, Marshal.SizeOf(_command) - 1);
             byte[] buffer = new byte[1];
             connection.Read(buffer, 0, 1);
@@ -178,19 +179,7 @@ namespace MicrocontrollerAPI
         }
         public Task<byte> SendCTP_CommandAsync(CTP_packet _command)
         {
-            return Task.Factory.StartNew((command) => {
-                if (connection.IsOpen == false)
-                {
-                    return Convert.ToByte(0);
-                }
-                CTP_packet p = (CTP_packet)command;
-                connection.Write(CommandStruct_to_Bytes(p), 0, Marshal.SizeOf(p) - 1);
-                byte[] buffer = new byte[1];
-                connection.Read(buffer, 0, 1);
-                //Console.WriteLine($"Recieved after command: {Convert.ToInt32(buffer[0])}");
-                Console.WriteLine($"Recieved after command: {Convert.ToInt32(buffer[0])}");
-                return buffer[0];
-            }, _command);
+            return Task.Run(() => SendCTP_Command(_command));
         }
 
         public void Close()
@@ -203,6 +192,10 @@ namespace MicrocontrollerAPI
             Console.WriteLine("Close Serial Port Connection by Disposable");
             instance = null;
             connection?.Close();
+        }
+
+        public bool IsOpened() {
+            return instance != null;
         }
     }
 }

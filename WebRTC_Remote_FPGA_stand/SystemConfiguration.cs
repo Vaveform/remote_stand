@@ -12,7 +12,7 @@ namespace WebRTC_Remote_FPGA_stand
     {
         private static IEnumerable<IceServer> LoadFromConfigAllSTUN()
         {
-            Regex stun_regex = new Regex(@"[S,s]tun");
+            Regex stun_regex = new Regex(@"[S,s][t, T][u, U][n, N]");
             // Return all stun servers from config
             // For stun server you only need url
             return ConfigurationManager.AppSettings.AllKeys.
@@ -35,7 +35,7 @@ namespace WebRTC_Remote_FPGA_stand
         }
         private static IEnumerable<IceServer> LoadFromConfigAllTURN()
         {
-            Regex turn_regex = new Regex(@"[T,t]urn");
+            Regex turn_regex = new Regex(@"[T,t][u, U][r, R][n, N]");
             // Adding all turn servers. To use turn servers you should 
             // add to WebRTC_Remote_FPGA_stand.dll.config 
             // TurnPassword and UserName
@@ -48,16 +48,23 @@ namespace WebRTC_Remote_FPGA_stand
                 return turnServer;
             });
         }
+        private static string[] LoadWebSocketTokens() {
+            Regex websockettokens_regex = new Regex(@"WebSocketToken");
+            return ConfigurationManager.AppSettings.AllKeys.
+                Where((key) => websockettokens_regex.IsMatch(key)).
+                Select((key) => ConfigurationManager.AppSettings.Get(key)).
+                ToArray();
+        }
         private static PeerConnectionConfiguration CreateSetting()
         {
-            
+
             // Here the main settings of PeerConnection object
             // If you want to someone change in settings of PeerConnection objects
             // You can make it here
             PeerConnectionConfiguration setting = new PeerConnectionConfiguration();
             setting.IceServers.AddRange(LoadFromConfigAllSTUN());
             setting.IceServers.AddRange(LoadFromConfigAllTURN());
-            Console.WriteLine("Creating PeerConnection");
+            //Console.WriteLine("Creating PeerConnection");
             return setting;
         }
 
@@ -66,6 +73,8 @@ namespace WebRTC_Remote_FPGA_stand
 
         // URL of signaling mechanism
         public static string SignalingURL { get; } = ConfigurationManager.AppSettings.Get("SignalingMechanismURL");
+        public static LocalVideoDeviceInitConfig VideoDeviceSettings {get; set;} = new LocalVideoDeviceInitConfig();
+        public static string[] WebSocketTokens { get; } = LoadWebSocketTokens();
 
     }
 }

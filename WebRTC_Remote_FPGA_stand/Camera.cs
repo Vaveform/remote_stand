@@ -7,42 +7,26 @@ using System.Threading.Tasks;
 
 namespace WebRTC_Remote_FPGA_stand
 {
-    class Camera : IDisposable
+    static class Camera
     {
         private static VideoTrackSource VideoSource { get; set; } = null;
-        private static Camera Instance { get; set; } = null;
+
+        // Semaphore allows to block code for n Threads
         private static SemaphoreSlim Gate { get; set; } = new SemaphoreSlim(1);
 
-        private Camera() { }
-
-        static public async Task<Camera> CreateAsync()
+        static public async Task<VideoTrackSource> CreateAsync(LocalVideoDeviceInitConfig config = null)
         {
             Console.WriteLine("Calling Create Camera Method in thread {0}", Thread.CurrentThread.ManagedThreadId);
+
             await Gate.WaitAsync();
-            if (Instance != null)
+            if (VideoSource != null)
             {
                 throw new SystemException("Camera instance already created and using");
             }
             Gate.Release();
-            Instance = new Camera();
-            VideoSource = await DeviceVideoTrackSource.CreateAsync();
-            return Instance;
+            VideoSource = await DeviceVideoTrackSource.CreateAsync(config);
+            return VideoSource;
 
-        }
-
-        public List<ISystemController> mediators { get; set; }
-        public VideoTrackSource source { get => VideoSource; }
-
-        public void Close() {
-            Instance?.Dispose();
-        }
-
-
-        public void Dispose()
-        {
-            VideoSource?.Dispose();
-            Instance = null;
-            // Here should be Notify, to notify HardwareCell - Camera free
         }
     }
 }

@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 
 namespace WebRTC_Remote_FPGA_stand
 {
-    public class Quartus
+    public class Quartus : IDisposable
     {
         private const string environment_variable = "QUARTUS_ROOTDIR";
-        public string path_to_quartus { get; }
+        private string path_to_quartus { get; }
 
         private static Process cmd;
 
@@ -52,17 +52,7 @@ namespace WebRTC_Remote_FPGA_stand
             return _instance;
         }
 
-        public Task<string> RunQuartusCommandAsync(string command)
-        {
-            // Restart StandardInput
-            cmd.Start();
 
-            cmd.StandardInput.WriteLine(path_to_quartus + command);
-            cmd.StandardInput.Flush();
-            cmd.StandardInput.Close();
-            //cmd.WaitForExit();
-            return cmd.StandardOutput.ReadToEndAsync();
-        }
 
         public string RunQuartusCommand(string command)
         {
@@ -74,6 +64,24 @@ namespace WebRTC_Remote_FPGA_stand
             cmd.StandardInput.Close();
             cmd.WaitForExit();
             return cmd.StandardOutput.ReadToEnd();
+        }
+
+        public Task<string> RunQuartusCommandAsync(string command)
+        {
+            return Task.Run(() => RunQuartusCommand(command));
+        }
+
+        public void Dispose() {
+            // Kill created process.
+            cmd.Kill();
+            // Free associated process.
+            cmd.Close();
+            // Set _instance null, to say GetInstance that to call lazy initialization
+            _instance = null;
+        }
+
+        public void Close() {
+            Dispose();
         }
     }
 }
