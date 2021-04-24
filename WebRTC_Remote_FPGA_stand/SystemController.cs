@@ -10,51 +10,77 @@ using System.IO;
 using System.Text.Json;
 using System.Runtime.InteropServices;
 using WebSocketSharp;
+using System.Timers;
 
 namespace WebRTC_Remote_FPGA_stand
 {
-    
-    
-    
 
     public class SystemController : ISystemController
     {
         private static void WritingVideo(I420AVideoFrame frame) {
             Console.WriteLine("Writing video for async working: width: {0}, height {1}", frame.width, frame.height);
         }
+
+
+        // Time of restarting WebRTC peer connection.
+        // Set time 15 minutes to restatring peer connection
+        private static int TimeOfRestart = 900000;
         protected ISignaling SignalingMechanism { get; set; }
         protected IUserCell ClientCell { get; set; }
         protected VideoTrackSource Source { get; set; }
-        protected PeerConnection Connection { get; set; } 
+        protected PeerConnection Connection { get; set; }
+        protected System.Timers.Timer RestartTimer { get; set; }
+
+        public async void TimeElapsed(Object source, System.Timers.ElapsedEventArgs e) {
+            Console.WriteLine("[{0}] : time elapsed in thread {1}", DateTime.Now, Thread.CurrentThread.ManagedThreadId);
+            if (Connection != null) {
+                Console.WriteLine("Connection closing");
+                Connection.Close();
+                await PeerConnectionClosed(this, "Closed by timer");
+            }
+        }
+
+        public SystemController() {
+            RestartTimer = new System.Timers.Timer();
+            RestartTimer.Interval = TimeOfRestart;
+            RestartTimer.Enabled = true;
+            RestartTimer.Elapsed += TimeElapsed;
+        }
 
         public async Task NotifyPeerConnection(object sender, Type message_type, string message)
         {
             try
             {
-                (string header, string correct_message) = message.DivideHeaderAndOriginalJSON();
-                Console.WriteLine("Called NotifyPeerConnection with header: {0}", header);
-                if (header == "{\"data\":{\"getRemoteMedia\":" && correct_message == "true")
+                // Check if connection was created
+                if (Connection != null)
                 {
-                    Connection.CreateOffer();
-                    // Console.WriteLine("GetMedia call after await ended in thread {0}", Thread.CurrentThread.ManagedThreadId);
-                }
-                if (header.IndexOf("candidate") != -1 && correct_message != "null")
-                {
-                    Connection.AddIceCandidate(
-                        JsonSerializer.Deserialize<ICEJavaScriptNotation>(correct_message).
-                        ToMRNetCoreNotation());
-                }
-                if (header.IndexOf("description") != -1)
-                {
-                    SdpMessage sdp = JsonSerializer.Deserialize<SDPJavaScriptNotation>(correct_message).
-                        ToMRNetCoreNotation();
-                    await Connection.SetRemoteDescriptionAsync(sdp);
-                    if (sdp.Type == SdpMessageType.Offer) {
-                        Connection.CreateAnswer();
+                    (string header, string correct_message) = message.DivideHeaderAndOriginalJSON();
+                    Console.WriteLine("Called NotifyPeerConnection with header: {0}", header);
+                    if (header == "{\"data\":{\"getRemoteMedia\":" && correct_message == "true")
+                    {
+                        Connection.CreateOffer();
+                        // Console.WriteLine("GetMedia call after await ended in thread {0}", Thread.CurrentThread.ManagedThreadId);
+                    }
+                    if (header.IndexOf("candidate") != -1 && correct_message != "null")
+                    {
+                        Connection.AddIceCandidate(
+                            JsonSerializer.Deserialize<ICEJavaScriptNotation>(correct_message).
+                            ToMRNetCoreNotation());
+                    }
+                    if (header.IndexOf("description") != -1)
+                    {
+                        SdpMessage sdp = JsonSerializer.Deserialize<SDPJavaScriptNotation>(correct_message).
+                            ToMRNetCoreNotation();
+                        await Connection.SetRemoteDescriptionAsync(sdp);
+                        if (sdp.Type == SdpMessageType.Offer)
+                        {
+                            Connection.CreateAnswer();
+                        }
                     }
                 }
             }
-            catch (Exception ex) {
+            catch (Exception ex)
+            {
                 Console.WriteLine("In NotifyPeerConnection caused exception: {0}", ex.Message);
             }
         }
@@ -62,7 +88,7 @@ namespace WebRTC_Remote_FPGA_stand
         public void NotifySignaling(object sender, Type message_type, string message)
         {
             Console.WriteLine("Called NotifySignaling with message: {0} in thread {1}", message, Thread.CurrentThread.ManagedThreadId);
-            if (SignalingMechanism != null)
+            if (SignalingMechanism != null && SignalingMechanism.IsAlive())
             {
                 SignalingMechanism.SendToEndPoint(sender, message);
             }
@@ -78,19 +104,21 @@ namespace WebRTC_Remote_FPGA_stand
 
         public async Task PeerConnectionClosed(object sender, string message)
         {
+            Console.WriteLine("Peer Connection Was Disposed...");
             if (!Source.Enabled) {
                 Source = await Camera.CreateAsync(SystemConfiguration.VideoDeviceSettings);
             }
-            Connection = await WebRTCPeerCreator.InitializePeerConnection(this);
-            WebRTCPeerCreator.AddVideoTransceiver(Connection, Source);
+            ClientCell?.RemoveRemoteControlling(Connection);
+            Connection = await WebRTCPeerCreator.InitializePeerConnection();
+            Connection = WebRTCPeerCreator.AddVideoTransceiver(Connection, Source);
+            Connection = WebRTCPeerCreator.BindPeerWithController(Connection, this);
+            Console.WriteLine("End of rebuilding peer connection");
 
         }
 
         public async Task RunSystem()
         {
-            await VideoDeviceSelection();
             await SystemStartup();
-            SignalingMechanism = new WebSocketSignaling(this);
             var autoEvent = new AutoResetEvent(false);
             Console.ReadKey(true);
             Console.WriteLine("Program termined.");
@@ -124,9 +152,15 @@ namespace WebRTC_Remote_FPGA_stand
             {
                 Source = await Camera.CreateAsync(SystemConfiguration.VideoDeviceSettings);
             }
-            Connection = await WebRTCPeerCreator.InitializePeerConnection(this);
-            ClientCell = new UserCell(this);
+            SignalingMechanism = new WebSocketSignaling(this);
+
+            Connection = await WebRTCPeerCreator.InitializePeerConnection();
             WebRTCPeerCreator.AddVideoTransceiver(Connection, Source);
+
+            ClientCell = new UserCell(this);
+            Connection = WebRTCPeerCreator.BindPeerWithController(Connection, this);
+
+
         }
 
         public void PeerConnectionDisconnected(object sender, string message)

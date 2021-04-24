@@ -43,5 +43,10 @@ namespace WebRTC_Remote_FPGA_stand
                 Socket.Close();
             }
         }
+
+        public override bool IsAlive()
+        {
+            return Socket.IsAlive;
+        }
     }
 }

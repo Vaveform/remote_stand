@@ -11,6 +11,7 @@ namespace WebRTC_Remote_FPGA_stand
         abstract public void Dispose();
 
         abstract public void SendToEndPoint(object sender, string message);
+        abstract public bool IsAlive();
 
     }
 }

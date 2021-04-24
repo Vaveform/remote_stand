@@ -343,7 +343,7 @@ namespace WebRTC_Remote_FPGA_stand
         //    Callback2();
         //}
 
-        static async Task Main(string[] args)
+        static void Main(string[] args)
         {
             //Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
             //var list = await DeviceVideoTrackSource.GetCaptureDevicesAsync();
@@ -360,7 +360,11 @@ namespace WebRTC_Remote_FPGA_stand
             //    Console.WriteLine("Hello world");
             //}
             SystemController controller = new SystemController();
-            await controller.RunSystem();
+            controller.VideoDeviceSelection().GetAwaiter().GetResult();
+            Task t = controller.RunSystem();
+
+            var k = Console.ReadLine();
+
             //Task<DeviceVideoTrackSource> t = DeviceVideoTrackSource.CreateAsync();
             //DeviceVideoTrackSource lk = await t;
             //lk.Dispose();

@@ -72,12 +72,16 @@ namespace WebRTC_Remote_FPGA_stand
         }
 
         public void Dispose() {
-            // Kill created process.
-            cmd.Kill();
-            // Free associated process.
-            cmd.Close();
-            // Set _instance null, to say GetInstance that to call lazy initialization
-            _instance = null;
+            // it means that cmd proccess was created
+            if (_instance != null)
+            {
+                // Kill created process.
+                cmd.Kill();
+                // Free associated process.
+                cmd.Close();
+                // Set _instance null, to say GetInstance that to call lazy initialization
+                _instance = null;
+            }
         }
 
         public void Close() {

@@ -36,12 +36,9 @@ namespace WebRTC_Remote_FPGA_stand
 
         public override void RemoveRemoteControlling(PeerConnection Connection)
         {
-            if (InputEmulator.IsOpened())
-            {
-                InputEmulator.Close();
-            }
+            InputEmulator?.Close();
             UserAssignedFile?.Close();
-            FirmwareLoader.Close();
+            FirmwareLoader?.Close();
 
             Connection.DataChannelAdded -= DataChanelAddedHandler;
 
@@ -52,7 +49,7 @@ namespace WebRTC_Remote_FPGA_stand
             try
             {
                 Console.WriteLine("Received command {0}", ASCIIEncoding.ASCII.GetString(command));
-                Console.WriteLine(InputEmulator.IsOpened());
+                Console.WriteLine(Microcontroller.WasOpened());
                 await InputEmulator.SendCTP_CommandAsync(JsonSerializer.Deserialize<CTP_packet>(command));
             }
             catch (Exception e)
@@ -116,6 +113,7 @@ namespace WebRTC_Remote_FPGA_stand
             Console.WriteLine("Called GetMedia which initialized UserCell in Thread {0}", Thread.CurrentThread.ManagedThreadId);
             FirmwareLoader = Quartus.GetInstance();
             InputEmulator = Microcontroller.Create();
+
 
             // Adding data channel for loading firmware and controling equipment
             Connection.DataChannelAdded += DataChanelAddedHandler;

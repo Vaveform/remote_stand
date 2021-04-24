@@ -113,6 +113,7 @@ namespace MicrocontrollerAPI
                     connection.Open();
                     connection.Write(CommandStruct_to_Bytes(command), 0, Marshal.SizeOf(command) - 1);
                     connection.Read(buffer, 0, 1);
+                    Console.WriteLine("{0} : {1}", connection.PortName, buffer[0]);
                 }
                 catch (Exception)
                 {
@@ -138,7 +139,8 @@ namespace MicrocontrollerAPI
             connection.Parity = System.IO.Ports.Parity.None;
             connection.StopBits = System.IO.Ports.StopBits.One;
             connection.DataBits = 8;
-            connection.ReadTimeout = 300;
+            // Preventing TimeOut exception - we set 100 seconds
+            //connection.ReadTimeout = 100000;
 
             //Check_phisically_connected();
             //Console.WriteLine("Here building and connected Arduino");
@@ -172,7 +174,13 @@ namespace MicrocontrollerAPI
             Console.WriteLine("Sending");
             connection.Write(CommandStruct_to_Bytes(_command), 0, Marshal.SizeOf(_command) - 1);
             byte[] buffer = new byte[1];
-            connection.Read(buffer, 0, 1);
+            try
+            {
+                connection.Read(buffer, 0, 1);
+            }
+            catch (Exception ex) { Console.WriteLine(ex.Message);
+                return 0;
+            };
             //Console.WriteLine($"Recieved after command: {Convert.ToInt32(buffer[0])}");
             Console.WriteLine($"Recieved after command: {Convert.ToInt32(buffer[0])}");
             return buffer[0];
@@ -190,11 +198,14 @@ namespace MicrocontrollerAPI
         public void Dispose()
         {
             Console.WriteLine("Close Serial Port Connection by Disposable");
-            instance = null;
-            connection?.Close();
+            if (instance != null)
+            {
+                instance = null;
+                connection?.Close();
+            }
         }
 
-        public bool IsOpened() {
+        public static bool WasOpened() {
             return instance != null;
         }
     }

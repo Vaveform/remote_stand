@@ -1,6 +1,3 @@
-//void setup(){}
-//
-//void loop(){}
 #include "GyverPWM.h"
 
 
@@ -55,16 +52,6 @@ void setup() {
   SetSignalLevelOutput(pin6, LOW, false);
   SetSignalLevelOutput(pin7, LOW, false);
   SetSignalLevelOutput(pin8, LOW, false);
-
-
-//  SetSignalLevelOutput(pin1, HIGH, false);
-//  SetSignalLevelOutput(pin2, HIGH, false);
-//  SetSignalLevelOutput(pin3, HIGH, false);
-//  SetSignalLevelOutput(pin4, HIGH, false);
-//  SetSignalLevelOutput(pin5, HIGH, false);
-//  SetSignalLevelOutput(pin6, HIGH, false);
-//  SetSignalLevelOutput(pin7, HIGH, false);
-//  SetSignalLevelOutput(pin8, HIGH, false);
 }
 //000000010000010000000000000000000000000000000000000000000000000
 void loop() {
