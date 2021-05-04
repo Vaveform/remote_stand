@@ -77,7 +77,7 @@ void loop() {
         Serial.write(OK);
       }
       else if(command.command_type == 4){
-        if(command.pin_number != 3 && command.pin_number != 5 && command.pin_number != 9 && command.pin_number != 10 && command.pin_number != 11){
+        if(command.pin_number != 3 && command.pin_number != 9 && command.pin_number != 10 && command.pin_number != 11){
           Serial.write(bad_pin);
         }
         else if(command.duty < 0 && command.duty > 255){

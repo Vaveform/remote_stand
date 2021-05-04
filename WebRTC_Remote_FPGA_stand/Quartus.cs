@@ -37,8 +37,13 @@ namespace WebRTC_Remote_FPGA_stand
             cmd.StandardOutput.ReadLine();
             cmd.StandardOutput.ReadLine();
             //Console.WriteLine(cmd.StandardOutput.ReadToEnd());
-
+            
             string path = cmd.StandardOutput.ReadLine();
+            // QUARTUS_ROOTDIR variable not found - if you install Quartus
+            // this system variable created automatically
+            if (path.IndexOf(environment_variable) == -1) {
+                throw new PlatformNotSupportedException("Quartus not detected on this platform");
+            }
             path_to_quartus = path.Substring(path.IndexOf('=') + 1) + "\\bin64\\";
 
         }

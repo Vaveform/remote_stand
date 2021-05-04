@@ -12,7 +12,6 @@ namespace WebRTC_Remote_FPGA_stand
 {
     public class UserCell : IUserCell
     {
-
         private FileStream UserAssignedFile { get; set; }
         private bool FileCreated { get; set; } = false;
         private Quartus FirmwareLoader { get; set; }
@@ -36,12 +35,13 @@ namespace WebRTC_Remote_FPGA_stand
 
         public override void RemoveRemoteControlling(PeerConnection Connection)
         {
+            // Removing handler of data channel adding
+            Connection.DataChannelAdded -= DataChannelAddedHandler;
+
+            // Closing opened file, destroying Arduino input emulator and Quartus firmware loader
             InputEmulator?.Close();
             UserAssignedFile?.Close();
             FirmwareLoader?.Close();
-
-            Connection.DataChannelAdded -= DataChanelAddedHandler;
-
         }
 
         private async void CommandChannelHandler(byte[] command)
@@ -85,8 +85,10 @@ namespace WebRTC_Remote_FPGA_stand
             }
         }
 
-        private void DataChanelAddedHandler(DataChannel added_dataChannel)
+        private void DataChannelAddedHandler(DataChannel added_dataChannel)
         {
+            // In Artem Baskal code (client) data channel which created when client
+            // send CTP command has name sendDataChannel, other name for firmware (files)
             if (added_dataChannel.Label == "sendDataChannel")
             {
                 added_dataChannel.MessageReceived -= CommandChannelHandler;
@@ -107,20 +109,16 @@ namespace WebRTC_Remote_FPGA_stand
 
         public override void AddRemoteControlling(PeerConnection Connection)
         {
-            // Main method. This method called, when arrived getRemoteMedia : true
-            // This message create instance PeerConnection with config, Quartus instance 
-            // and Microcontroller instance 
-            Console.WriteLine("Called GetMedia which initialized UserCell in Thread {0}", Thread.CurrentThread.ManagedThreadId);
+            // Creating instance of system component to manipulate of equipment
             FirmwareLoader = Quartus.GetInstance();
             InputEmulator = Microcontroller.Create();
 
 
             // Adding data channel for loading firmware and controling equipment
-            Connection.DataChannelAdded += DataChanelAddedHandler;
+            Connection.DataChannelAdded += DataChannelAddedHandler;
 
-            Console.WriteLine("End of GetMedia which initialized UserCell in Thread {0}", Thread.CurrentThread.ManagedThreadId);
+            //Console.WriteLine("End of GetMedia which initialized UserCell in Thread {0}", Thread.CurrentThread.ManagedThreadId);
 
-            // Now we are ready to create offer and call Notyfying of signaling mechanism
         }
 
     }

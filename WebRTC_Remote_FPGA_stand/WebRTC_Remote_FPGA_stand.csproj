@@ -13,10 +13,4 @@
     <PackageReference Include="System.IO.Ports" Version="6.0.0-preview.2.21154.6" />
   </ItemGroup>
 
-  <ItemGroup>
-    <None Update="Quartus_test_file.sof">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-
 </Project>

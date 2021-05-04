@@ -7,12 +7,12 @@ using System.Threading.Tasks;
 
 namespace WebRTC_Remote_FPGA_stand
 {
-    static class Camera
+    public static class Camera
     {
         private static VideoTrackSource VideoSource { get; set; } = null;
 
         // Semaphore allows to block code for n Threads
-        private static SemaphoreSlim Gate { get; set; } = new SemaphoreSlim(1);
+        private static SemaphoreSlim Gate { get; set; } = new SemaphoreSlim(1, 1);
 
         static public async Task<VideoTrackSource> CreateAsync(LocalVideoDeviceInitConfig config = null)
         {

@@ -343,35 +343,15 @@ namespace WebRTC_Remote_FPGA_stand
         //    Callback2();
         //}
 
-        static void Main(string[] args)
+
+
+        static async Task Main(string[] args)
         {
-            //Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
-            //var list = await DeviceVideoTrackSource.GetCaptureDevicesAsync();
-            //Console.WriteLine(Thread.CurrentThread.ManagedThreadId);
-            //foreach (var format in await DeviceVideoTrackSource.GetCaptureFormatsAsync(list[0].id))
-            //{
-            //    Console.WriteLine("Width: {0}, Height: {1}, Framerate {2}",format.width, format.height, format.framerate);
-            //}
-            //LocalVideoDeviceInitConfig t = new LocalVideoDeviceInitConfig();
-            //t.videoDevice = SystemConfiguration.SelectedVideoCaptureDevice;
-            //var l = await DeviceVideoTrackSource.CreateAsync();
-            //Console.WriteLine(typeof(IceCandidate));
-            //if (typeof(IceCandidate).Name == "IceCandidate") {
-            //    Console.WriteLine("Hello world");
-            //}
             SystemController controller = new SystemController();
-            controller.VideoDeviceSelection().GetAwaiter().GetResult();
-            Task t = controller.RunSystem();
-
-            var k = Console.ReadLine();
-
-            //Task<DeviceVideoTrackSource> t = DeviceVideoTrackSource.CreateAsync();
-            //DeviceVideoTrackSource lk = await t;
-            //lk.Dispose();
-            //if(lk.Enabled == false) {
-            //    Console.WriteLine("lk null");
-            //}
-            //await StartStend();
+            await controller.VideoDeviceSelection();
+            await controller.RunSystem();
+            //var k = Console.ReadLine();
+            //StartStend().GetAwaiter().GetResult();
         }
     }
 }

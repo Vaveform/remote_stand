@@ -8,26 +8,24 @@ using System.Threading.Tasks;
 
 namespace MicrocontrollerAPI
 {
-    public class Pin_Setting
+    [System.Flags]
+    public enum CommandType : byte
     {
-        public Pin_Setting()
-        {
-            button_number = signal_level = duty = frequency = -1;
-            PWM_signal_status = false;
-        }
-        public int button_number { get; set; }
-        public bool PWM_signal_status { get; set; }
-        public int signal_level { get; set; }
-        public int duty { get; set; }
-        public int frequency { get; set; }
+        GetSignalLevel = 0b_0000_0001,
+        SetLowLevel = 0b_0000_0010,
+        SetHighLevel = 0b_0000_0011,
+        SetPWMSignal = 0b_0000_0100
     }
-    public class Ids_Usings_Pins
+    /// <summary>
+    /// Available pins of Arduino specified in documentation
+    /// </summary>
+    static public class Ids_Usings_Pins
     {
         // input GPIO_0[0] on FPGA = LEDDR[0] - output pin number Arduino 11 - PWM
         // input GPIO_0[2] on FPGA = LEDDR[1] - output pin number Arduino 10 - PWM
         // input GPIO_0[4] on FPGA = LEDDR[2] - output pin number Arduino 9 - PWM
         // input GPIO_0[6] on FPGA = LEDDR[3] - output pin number Arduino 8
-        // input GPIO_0[10] on FPGA = LEDDR[4] - output pin number Arduino 5 - PWM
+        // input GPIO_0[10] on FPGA = LEDDR[4] - output pin number Arduino 5 - PWM - in current version here error
         // input GPIO_0[12] on FPGA = LEDDR[5] - output pin number Arduino 4
         // input GPIO_0[14] on FPGA = LEDDR[6] - output pin number Arduino 3 - PWM
         // input GPIO_0[16] on FPGA = LEDDR[7] - output pin number Arduino 2
@@ -41,42 +39,32 @@ namespace MicrocontrollerAPI
             {6, 3},
             {7, 2}
         };
+
+        static public readonly List<int> Available_PWM_Pins = new List<int> { 11, 10, 9, 3 };
     }
-    public enum Digital_Signal_Levels
-    {
-        LOW,
-        HIGH
-    }
-    public class Digital_GPIO_Output
-    {
-        public Digital_GPIO_Output() { }
-        public Digital_GPIO_Output(int _pin_number, Digital_Signal_Levels _signal_level)
-        {
-            pin_number = _pin_number;
-            signal_level = _signal_level;
-        }
-        public int pin_number { get; set; }
-        public Digital_Signal_Levels signal_level { get; set; }
-    }
-    public class Pins_Status
-    {
-        public Pins_Status()
-        {
-            pins = new List<Digital_GPIO_Output>();
-            type_of_pins = typeof(Digital_GPIO_Output).ToString();
-        }
-        public string type_of_pins { get; private set; }
-        public List<Digital_GPIO_Output> pins { get; private set; }
-        public void AddPinLevel(int FPGA_input_number, Digital_Signal_Levels signal_level)
-        {
-            pins.Add(new Digital_GPIO_Output(FPGA_input_number, signal_level));
-        }
-    }
+    /// <summary>
+    /// Command Transfer Protocol (CTP) Packet structure 
+    /// </summary>
     public struct CTP_packet
     {
+        /// <summary>
+        /// 1 - Give signal level on pin in any case (PWM or Digital)
+        /// 2 - Set on pin low level signal (if earlier was set PWM, PWM stopped)
+        /// 3 - Set on pin high level signal (if earlier was set PWM, PWM stopped)
+        /// 4 - Set on special pins (3 - button_2 FPGA, 5 - button_4 FPGA, 9 - button_6 FPGA, 10 - button_7 FPGA, 11 - button_8 FPGA) PWM signal
+        /// </summary>
         public byte command_type { set; get; }
+        /// <summary>
+        /// GPIO pin numbers: 2,3,4,5,8,9,10,11
+        /// </summary>
         public byte pin_number { set; get; }
+        /// <summary>
+        /// If set command = 4, should be defined duty (0 - 255)
+        /// </summary>
         public byte duty { set; get; }
+        /// <summary>
+        /// If set command = 4, should be defined frequency (250 - 2000'000 Herz)
+        /// </summary>
         public uint frequency { set; get; }
     }
     public class Microcontroller : IDisposable
@@ -140,7 +128,7 @@ namespace MicrocontrollerAPI
             connection.StopBits = System.IO.Ports.StopBits.One;
             connection.DataBits = 8;
             // Preventing TimeOut exception - we set 100 seconds
-            //connection.ReadTimeout = 100000;
+            connection.ReadTimeout = 1000;
 
             //Check_phisically_connected();
             //Console.WriteLine("Here building and connected Arduino");

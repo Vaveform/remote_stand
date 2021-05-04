@@ -30,10 +30,11 @@ namespace WebRTC_Remote_FPGA_stand
         protected VideoTrackSource Source { get; set; }
         protected PeerConnection Connection { get; set; }
         protected System.Timers.Timer RestartTimer { get; set; }
+        protected bool UserDisconnected { get; set; } = true;
 
         public async void TimeElapsed(Object source, System.Timers.ElapsedEventArgs e) {
             Console.WriteLine("[{0}] : time elapsed in thread {1}", DateTime.Now, Thread.CurrentThread.ManagedThreadId);
-            if (Connection != null) {
+            if (Connection != null && UserDisconnected) {
                 Console.WriteLine("Connection closing");
                 Connection.Close();
                 await PeerConnectionClosed(this, "Closed by timer");
@@ -43,8 +44,8 @@ namespace WebRTC_Remote_FPGA_stand
         public SystemController() {
             RestartTimer = new System.Timers.Timer();
             RestartTimer.Interval = TimeOfRestart;
-            RestartTimer.Enabled = true;
             RestartTimer.Elapsed += TimeElapsed;
+            RestartTimer.Start();
         }
 
         public async Task NotifyPeerConnection(object sender, Type message_type, string message)
@@ -100,6 +101,8 @@ namespace WebRTC_Remote_FPGA_stand
             Console.WriteLine("Here stop working async compucting");
             Source.I420AVideoFrameReady -= WritingVideo;
             ClientCell.AddRemoteControlling(Connection);
+            UserDisconnected = false;
+            RestartTimer.Stop();
         }
 
         public async Task PeerConnectionClosed(object sender, string message)
@@ -127,7 +130,7 @@ namespace WebRTC_Remote_FPGA_stand
         public void SignalingClosed(object sender, string message)
         {
             SignalingMechanism?.Dispose();
-            SignalingMechanism = new WebSocketSignaling(this);
+            SignalingMechanism = new WebSocketSignaling(this, SystemConfiguration.SignalingURL, SystemConfiguration.WebSocketTokens);
         }
 
 
@@ -152,7 +155,7 @@ namespace WebRTC_Remote_FPGA_stand
             {
                 Source = await Camera.CreateAsync(SystemConfiguration.VideoDeviceSettings);
             }
-            SignalingMechanism = new WebSocketSignaling(this);
+            SignalingMechanism = new WebSocketSignaling(this, SystemConfiguration.SignalingURL, SystemConfiguration.WebSocketTokens);
 
             Connection = await WebRTCPeerCreator.InitializePeerConnection();
             WebRTCPeerCreator.AddVideoTransceiver(Connection, Source);
@@ -169,6 +172,8 @@ namespace WebRTC_Remote_FPGA_stand
             Console.WriteLine("Here can working async compucting");
             ClientCell.RemoveRemoteControlling(Connection);
             Source.I420AVideoFrameReady += WritingVideo;
+            UserDisconnected = true;
+            RestartTimer.Start();
         }
 
     }
